@@ -23,10 +23,8 @@ namespace VolatilityAnalyzer
             var currencyPreference = new[] { "USD", "EUR", "USDT" };
             var symbols = await downloader.GetSymbols(exchange);
 
-            var t = Array.IndexOf(currencyPreference, "USDs");
-
             var filtered = symbols
-                .Select(x => new {Symbol = x, Order = Array.IndexOf(currencyPreference, x.Currency)})
+                .Select(x => new { Symbol = x, Order = Array.IndexOf(currencyPreference, x.Currency) })
                 .Where(x => x.Order >= 0)
                 .GroupBy(x => x.Symbol.Asset)
                 .Select(x => x.OrderBy(s => s.Order).First().Symbol)
