@@ -45,6 +45,7 @@ namespace VolatilityAnalyzer
                 .ToList();
 
             using var semaphore = new SemaphoreSlim(1);
+            var minPrices = (range.End - range.Start).TotalMinutes * 0.7;
 
             await Parallel.ForEachAsync(files, async (context, token) =>
             {
@@ -56,7 +57,7 @@ namespace VolatilityAnalyzer
                 var halfWindow = window / 2;
 
                 var prices = (await File.ReadAllLinesAsync(filename, token)).Select(x => double.Parse(x, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture)).ToList();
-                if (prices.Count <= window) return;
+                if (prices.Count <= window || prices.Count < minPrices) return;
 
                 var ma = GetMovingAverages(prices, window);
 
