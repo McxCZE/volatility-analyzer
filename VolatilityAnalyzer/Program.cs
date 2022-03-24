@@ -11,18 +11,19 @@ namespace VolatilityAnalyzer
 
         private static async Task Main()
         {
-            ServicePointManager.DefaultConnectionLimit = 10;
+            ServicePointManager.DefaultConnectionLimit = 40;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
             Log.Info("Starting");
 
+            int lookBackDays = -30;
             var downloader = new DefaultDownloader(new NullProgress());
             var range = DateTimeRange.FromDiff(new DateTime(2022, 1, 2, 0, 0, 0, DateTimeKind.Utc),
-                TimeSpan.FromDays(-365));
+                TimeSpan.FromDays(lookBackDays));
 
-            const string exchange = "BINANCE";
+            const string exchange = "Ftx";
 
-            var currencyPreference = new[] { "USD", "EUR", "USDT", "BTC" };
+            var currencyPreference = new[] { "USD" };
             var symbols = await downloader.GetSymbols(exchange);
 
             var filtered = symbols
@@ -59,37 +60,67 @@ namespace VolatilityAnalyzer
                 var prices = (await File.ReadAllLinesAsync(filename, token)).Select(x => double.Parse(x, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture)).ToList();
                 if (prices.Count <= window || prices.Count < minPrices) return;
 
-                var ma = GetMovingAverages(prices, window);
+                //var ma = GetMovingAverages(prices, window);
+                var oscilation = GetOscilation(prices);
 
-                var prevPerc = 0d;
+                //var prevPerc = 0d;
+
                 var stats = prices
                     .Skip(halfWindow)
                     .Take(prices.Count - halfWindow)
-                    .Zip(ma, (price, ma) =>
+                    .Zip(oscilation, (price, oscilation) =>
                     {
-                        var perc = Math.Abs(price == 0 ? 0 : (ma - price) / price * 100);
-                        if (perc > 100) perc *= 0.1d;
-                        var diff = Math.Abs(prevPerc - perc);
-                        prevPerc = perc;
-                        return new { Price = price, MA = ma, Perc = perc, Diff = diff };
+                        //var perc = Math.Abs(price == 0 ? 0 : (ma - price) / price * 100);
+                        //if (perc > 100) perc *= 0.1d;
+                        //var diff = Math.Abs(prevPerc - perc);
+                        //prevPerc = perc;
+                        return new { Price = price, Oscilation = oscilation };
                     })
                     .ToList();
 
                 var lines = stats.Select(x =>
-                    $"{x.Price.Ts()},{x.MA.Ts()},{x.Perc.Ts()},{x.Diff.Ts()}");
+                    $"{x.Price.Ts()},{x.Oscilation.Ts()}");
 
                 await File.WriteAllLinesAsync(Path.ChangeExtension(filename, ".analyzed.csv"), lines, token);
-                var percStat = stats.Select(x => x.Perc).Stat();
-                var diffStat = stats.Select(x => x.Diff).Stat();
+                //var percStat = stats.Select(x => x.Perc).Stat();
+                //var diffStat = stats.Select(x => x.Diff).Stat();
+                var oscilationStat = stats.Select(x => x.Oscilation).Stat();
 
                 await semaphore.WaitAsync(token);
-                await master.WriteLineAsync($"{symbolInfo.Asset},{symbolInfo.Currency},{percStat.Stddev.Ts()},{percStat.Average.Ts()},{diffStat.Stddev.Ts()},{diffStat.Average.Ts()}");
+                await master.WriteLineAsync($"{symbolInfo.Asset},{symbolInfo.Currency},{oscilationStat}");
                 await master.FlushAsync();
                 semaphore.Release();
             });
         }
 
-        private static IEnumerable<double> GetMovingAverages(IEnumerable<double> data, int window)
+        private static IEnumerable<double> GetOscilation(
+            IEnumerable<double> data
+        )
+        {
+            var lastSgn = 0;
+            var lastPrice = 0d;
+            int changedDirectionCount = 0;
+
+            foreach (var price in data)
+            {
+                var currentSgn = Math.Sign(lastPrice - price);
+                if (currentSgn == 0) continue; // you might want to solve this differently in case if the price is same 
+                if (currentSgn != lastSgn)
+                {
+                    //someUnknowParamThatIdontUnderstand = //... calculate magic parameter based on the fact the direction changed and streak contains consecutive number of fall / raise ticks
+                    changedDirectionCount++;
+                }
+                lastSgn = currentSgn;
+                lastPrice = price;
+            }
+
+            yield return changedDirectionCount;
+        }
+
+        private static IEnumerable<double> GetMovingAverages(
+            IEnumerable<double> data,
+            int window
+        )
         {
             var samples = new Queue<double>();
             var runningTotal = 0d;
