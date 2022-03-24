@@ -20,9 +20,9 @@ namespace VolatilityAnalyzer
             var range = DateTimeRange.FromDiff(new DateTime(2022, 1, 2, 0, 0, 0, DateTimeKind.Utc),
                 TimeSpan.FromDays(-365));
 
-            const string exchange = "KUCOIN";
+            const string exchange = "BINANCE";
 
-            var currencyPreference = new[] { "USD", "EUR", "USDT" };
+            var currencyPreference = new[] { "USD", "EUR", "USDT", "BTC" };
             var symbols = await downloader.GetSymbols(exchange);
 
             var filtered = symbols
