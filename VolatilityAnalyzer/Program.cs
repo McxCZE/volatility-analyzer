@@ -79,7 +79,7 @@ namespace VolatilityAnalyzer
                     .ToList();
 
                 var lines = stats.Select(x =>
-                    $"{x.Price.Ts()},{x.Oscilation}");
+                    $"{x.Price.Ts()},{x.Oscilation.Ts()}");
 
                 await File.WriteAllLinesAsync(Path.ChangeExtension(filename, ".analyzed.csv"), lines, token);
                 //var percStat = stats.Select(x => x.Perc).Stat();
