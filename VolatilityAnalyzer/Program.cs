@@ -23,7 +23,7 @@ namespace VolatilityAnalyzer
 
             const string exchange = "Ftx";
 
-            var currencyPreference = new[] { "USD" };
+            var currencyPreference = new[] { "BTC" };
             var symbols = await downloader.GetSymbols(exchange);
 
             var filtered = symbols
@@ -79,7 +79,7 @@ namespace VolatilityAnalyzer
                     .ToList();
 
                 var lines = stats.Select(x =>
-                    $"{x.Price.Ts()},{x.Oscilation.Ts()}");
+                    $"{x.Price.Ts()},{x.Oscilation}");
 
                 await File.WriteAllLinesAsync(Path.ChangeExtension(filename, ".analyzed.csv"), lines, token);
                 //var percStat = stats.Select(x => x.Perc).Stat();
