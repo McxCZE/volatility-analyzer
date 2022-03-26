@@ -22,7 +22,7 @@ namespace VolatilityAnalyzer
             var range = DateTimeRange.FromDiff(new DateTime(2022, 1, 2, 0, 0, 0, DateTimeKind.Utc),
                 TimeSpan.FromDays(lookBackDays));
 
-            const string exchange = "Ftx";
+            const string exchange = "Kucoin";
 
             var currencyPreference = new[] { "BTC" };
             var symbols = await downloader.GetSymbols(exchange);
@@ -36,7 +36,7 @@ namespace VolatilityAnalyzer
                 .ToList();
 
             await using var master = File.CreateText($"{exchange}-summary.csv");
-            await master.WriteLineAsync("Asset,Currency,Oscilation");
+            await master.WriteLineAsync("Asset,Currency,PercDiffChange,Oscilation,MagicMM");
 
             var files = filtered.Select(x => new
                 {
@@ -61,9 +61,14 @@ namespace VolatilityAnalyzer
                 if (prices.Count <= 1) return;
 
                 var oscilation = GetOscilation(prices);
+                var percDiffChange = GetPercDiffChangee(prices);
+                //var stDeviation = GetStandardDeviation(prices, 15);
+
+                double magic = (percDiffChange + oscilation) / prices.Last();
 
                 await semaphore.WaitAsync(token);
-                await master.WriteLineAsync($"{symbolInfo.Asset},{symbolInfo.Currency},{oscilation}");
+                await master.WriteLineAsync($"{symbolInfo.Asset},{symbolInfo.Currency},{percDiffChange.ToString().Replace(",", ".")},{oscilation},{magic.ToString().Replace(",", ".")}");
+                //Console.WriteLine($"{symbolInfo.Asset},{symbolInfo.Currency},{percDiffChange.ToString().Replace(",", ".")},{oscilation},{pricesDivision.ToString().Replace(",",".")}");
                 await master.FlushAsync();
                 semaphore.Release();
             });
@@ -84,6 +89,7 @@ namespace VolatilityAnalyzer
                 if (currentSgn == 0) continue; // you might want to solve this differently in case if the price is same 
                 if (currentSgn != lastSgn)
                 {
+
                     //someUnknowParamThatIdontUnderstand = //... calculate magic parameter based on the fact the direction changed and streak contains consecutive number of fall / raise ticks
                     changedDirectionCount++;
                 }
@@ -94,11 +100,74 @@ namespace VolatilityAnalyzer
             return changedDirectionCount;
         }
 
-        private static double GetMa(
+        private static double GetPercDiffChangee(
             List<double> data
+            )
+        {
+            var lastSgn = 0;
+            var lastPrice = 0d;
+            double percDiffChange = 0d;
+
+            foreach (var price in data)
+            {
+                var currentSgn = Math.Sign(lastPrice - price);
+                if (currentSgn == 0) continue; // you might want to solve this differently in case if the price is same 
+                if (currentSgn != lastSgn)
+                {
+
+                    //someUnknowParamThatIdontUnderstand = //... calculate magic parameter based on the fact the direction changed and streak contains consecutive number of fall / raise ticks
+                    percDiffChange += PercentageDifference(lastPrice, price);
+                }
+                lastSgn = currentSgn;
+                lastPrice = price;
+            }
+
+            return percDiffChange;
+        }
+
+        private static double GetStandardDeviation(
+            List<double> data,
+            int smoothMovingAverage
         )
         {
-            //dopsat.
+            var sMa = smoothMovingAverage; // in Hours parameter. As to make input easier...
+            var smoothMaMinutes = sMa * 60; //14*60=840
+
+            var deviations = 0d;
+            int deviationsCount = 0;
+            var pricesWindow = 0d;
+
+            int i = 0;
+            foreach(var price in data)
+            {
+                i++; //i = 1 minute;
+                pricesWindow += price;
+                if (i / smoothMaMinutes % 1 == 0)
+                {
+                    deviations += pricesWindow / smoothMaMinutes; // 840x{price += price} / 840 = 1,1; (if price, 1,1 all the time)
+                    deviationsCount++;
+                    //Console.WriteLine(i);
+                }
+            }
+
+            double result = deviations / deviationsCount; // <- Higher The Number, bigger the oscilation? Need to verify.             
+            return result;
+        }
+
+        private static double PercentageDifference(
+            double firstValue,
+            double secondValue
+        )
+        {
+            double numerator = Math.Abs(firstValue - secondValue);
+            double denominator = (firstValue + secondValue) / 2;
+
+            if (numerator != 0)
+            {
+                double percentageDiff = (numerator / denominator) * 100;
+                return percentageDiff;
+            }
+
             return 0;
         }
     }
