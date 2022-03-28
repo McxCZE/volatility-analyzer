@@ -11,7 +11,7 @@ namespace VolatilityAnalyzer
 
         private static async Task Main()
         {
-            ServicePointManager.DefaultConnectionLimit = 40;
+            ServicePointManager.DefaultConnectionLimit = 15;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
             Log.Info("Starting");
@@ -73,7 +73,7 @@ namespace VolatilityAnalyzer
 
                 await semaphore.WaitAsync(token);
                 await master.WriteLineAsync($"{assetVal},{currencyVal},{percDiffVal},{oscilation},{magicVal}");
-                //Console.WriteLine($"{symbolInfo.Asset},{symbolInfo.Currency},{percDiffChange.ToString().Replace(",", ".")},{oscilation},{pricesDivision.ToString().Replace(",",".")}");
+                //Console.WriteLine($"{assetVal},{currencyVal},{percDiffVal},{oscilation},{magicVal}");
                 await master.FlushAsync();
                 semaphore.Release();
             });
