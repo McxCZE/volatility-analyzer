@@ -17,14 +17,14 @@ namespace VolatilityAnalyzer
             Log.Info("Starting");
 
             int lookBackDays = -30;
-
             var downloader = new DefaultDownloader(new NullProgress());
+
             var range = DateTimeRange.FromDiff(new DateTime(2022, 1, 2, 0, 0, 0, DateTimeKind.Utc),
                 TimeSpan.FromDays(lookBackDays));
 
-            const string exchange = "Kucoin";
+            const string exchange = "Ftx";
 
-            var currencyPreference = new[] { "BTC" };
+            var currencyPreference = new[] { "PERP" };
             var symbols = await downloader.GetSymbols(exchange);
 
             var filtered = symbols
@@ -61,7 +61,7 @@ namespace VolatilityAnalyzer
                 if (prices.Count <= 1) return;
 
                 var oscilation = GetOscilation(prices);
-                var percDiffChange = GetPercDiffChangee(prices);
+                var percDiffChange = GetPercDiffChange(prices);
                 //var stDeviation = GetStandardDeviation(prices, 15);
 
                 double magic = (percDiffChange + oscilation) / prices.Last();
@@ -94,8 +94,6 @@ namespace VolatilityAnalyzer
                 if (currentSgn == 0) continue; // you might want to solve this differently in case if the price is same 
                 if (currentSgn != lastSgn)
                 {
-
-                    //someUnknowParamThatIdontUnderstand = //... calculate magic parameter based on the fact the direction changed and streak contains consecutive number of fall / raise ticks
                     changedDirectionCount++;
                 }
                 lastSgn = currentSgn;
@@ -105,7 +103,7 @@ namespace VolatilityAnalyzer
             return changedDirectionCount;
         }
 
-        private static double GetPercDiffChangee(
+        private static double GetPercDiffChange(
             List<double> data
         )
         {
@@ -128,6 +126,23 @@ namespace VolatilityAnalyzer
             }
 
             return percDiffChange;
+        }
+
+        private static double PercentageDifference(
+            double firstValue,
+            double secondValue
+        )
+        {
+            double numerator = Math.Abs(firstValue - secondValue);
+            double denominator = (firstValue + secondValue) / 2;
+
+            if (numerator != 0)
+            {
+                double percentageDiff = (numerator / denominator) * 100;
+                return percentageDiff;
+            }
+
+            return 0;
         }
 
         private static double GetStandardDeviation(
@@ -159,21 +174,6 @@ namespace VolatilityAnalyzer
             return result;
         }
 
-        private static double PercentageDifference(
-            double firstValue,
-            double secondValue
-        )
-        {
-            double numerator = Math.Abs(firstValue - secondValue);
-            double denominator = (firstValue + secondValue) / 2;
 
-            if (numerator != 0)
-            {
-                double percentageDiff = (numerator / denominator) * 100;
-                return percentageDiff;
-            }
-
-            return 0;
-        }
     }
 }
