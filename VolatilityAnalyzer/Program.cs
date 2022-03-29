@@ -65,7 +65,7 @@ namespace VolatilityAnalyzer
                 //var stDeviation = GetStandardDeviation(prices, 15);
 
                 double magic = (percDiffChange + oscilation) / prices.Last();
-
+                
                 var asset = symbolInfo.Asset;
                 var currency = symbolInfo.Currency;
                 var percDiffChangeVal = percDiffChange.ToString().Replace(",", ".");
