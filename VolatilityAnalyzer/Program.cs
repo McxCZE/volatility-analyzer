@@ -66,8 +66,15 @@ namespace VolatilityAnalyzer
 
                 double magic = (percDiffChange + oscilation) / prices.Last();
 
+                var asset = symbolInfo.Asset;
+                var currency = symbolInfo.Currency;
+                var percDiffChangeVal = percDiffChange.ToString().Replace(",", ".");
+                var oscilationVal = oscilation;
+                var magicVal = magic.ToString().Replace(",", ".");
+                var priceLast = prices.Last();
+
                 await semaphore.WaitAsync(token);
-                await master.WriteLineAsync($"{symbolInfo.Asset},{symbolInfo.Currency},{percDiffChange.ToString().Replace(",", ".")},{oscilation},{magic.ToString().Replace(",", ".")}");
+                await master.WriteLineAsync($"{asset},{currency},{priceLast},{percDiffChangeVal},{oscilationVal},{magicVal}");
                 //Console.WriteLine($"{symbolInfo.Asset},{symbolInfo.Currency},{percDiffChange.ToString().Replace(",", ".")},{oscilation},{pricesDivision.ToString().Replace(",",".")}");
                 await master.FlushAsync();
                 semaphore.Release();
