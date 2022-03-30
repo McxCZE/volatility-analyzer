@@ -62,16 +62,18 @@ namespace VolatilityAnalyzer
 
                 var oscilation = GetOscilation(prices);
                 var percDiffChange = GetPercDiffChange(prices);
-                //var stDeviation = GetStandardDeviation(prices, 15);
+                //var getDeviationFromSMA = GetDeviationsFromSMA(prices, 15); //Gets the collective number of deviated minutes times percentage of how far deviated from SMA.
 
                 double magic = (percDiffChange + oscilation) / prices.Last();
-                
+
+                #region OutputFormatting
                 var asset = symbolInfo.Asset;
                 var currency = symbolInfo.Currency;
                 var percDiffChangeVal = percDiffChange.ToString().Replace(",", ".");
                 var oscilationVal = oscilation;
                 var magicVal = magic.ToString().Replace(",", ".");
                 var priceLast = prices.Last();
+                #endregion
 
                 await semaphore.WaitAsync(token);
                 await master.WriteLineAsync($"{asset},{currency},{priceLast},{percDiffChangeVal},{oscilationVal},{magicVal}");
@@ -147,7 +149,8 @@ namespace VolatilityAnalyzer
             return 0;
         }
 
-        private static double GetStandardDeviation(
+        //I do not see a point in pushing this function and finishing it. Maybe someone will find a use for it. 
+        private static double GetSMA(
             List<double> data,
             int smoothMovingAverage
         )
