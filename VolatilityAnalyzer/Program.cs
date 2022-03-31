@@ -22,9 +22,9 @@ namespace VolatilityAnalyzer
             var range = DateTimeRange.FromDiff(new DateTime(2022, 1, 2, 0, 0, 0, DateTimeKind.Utc),
                 TimeSpan.FromDays(lookBackDays));
 
-            const string exchange = "Ftx";
+            const string exchange = "Kucoin";
 
-            var currencyPreference = new[] { "PERP" };
+            var currencyPreference = new[] { "KCS", "ETH", "BTC" };
             var symbols = await downloader.GetSymbols(exchange);
 
             var filtered = symbols
@@ -36,7 +36,7 @@ namespace VolatilityAnalyzer
                 .ToList();
 
             await using var master = File.CreateText($"{exchange}-summary.csv");
-            await master.WriteLineAsync("Asset,Currency,PercDiffChange,Oscilation,MagicMM");
+            await master.WriteLineAsync("Asset,Currency,LastPrice,PercDiffChange,Oscilation,MagicMM");
 
             var files = filtered.Select(x => new
                 {
@@ -63,7 +63,6 @@ namespace VolatilityAnalyzer
                 var oscilation = GetOscilation(prices);
                 var percDiffChange = GetPercDiffChange(prices);
                 //var getDeviationFromSMA = GetDeviationsFromSMA(prices, 15); //Gets the collective number of deviated minutes times percentage of how far deviated from SMA.
-
                 double magic = (percDiffChange + oscilation) / prices.Last();
 
                 #region OutputFormatting
@@ -72,7 +71,7 @@ namespace VolatilityAnalyzer
                 var percDiffChangeVal = percDiffChange.ToString().Replace(",", ".");
                 var oscilationVal = oscilation;
                 var magicVal = magic.ToString().Replace(",", ".");
-                var priceLast = prices.Last();
+                var priceLast = prices.Last().ToString().Replace(",",".");
                 #endregion
 
                 await semaphore.WaitAsync(token);
