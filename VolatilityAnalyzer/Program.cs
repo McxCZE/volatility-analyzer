@@ -16,15 +16,15 @@ namespace VolatilityAnalyzer
 
             Log.Info("Starting");
 
-            int lookBackDays = -30;
+            int lookBackDays = -60;
             var downloader = new DefaultDownloader(new NullProgress());
 
             var range = DateTimeRange.FromDiff(new DateTime(2022, 1, 2, 0, 0, 0, DateTimeKind.Utc),
                 TimeSpan.FromDays(lookBackDays));
 
-            const string exchange = "Kucoin";
+            const string exchange = "FTX";
 
-            var currencyPreference = new[] { "KCS", "ETH", "BTC" };
+            var currencyPreference = new[] { "USD" };
             var symbols = await downloader.GetSymbols(exchange);
 
             var filtered = symbols
@@ -63,13 +63,23 @@ namespace VolatilityAnalyzer
                 var oscilation = GetOscilation(prices);
                 var percDiffChange = GetPercDiffChange(prices);
                 //var getDeviationFromSMA = GetDeviationsFromSMA(prices, 15); //Gets the collective number of deviated minutes times percentage of how far deviated from SMA.
-                double magic = (percDiffChange + oscilation) / prices.Last();
+                //double magic = (percDiffChange + oscilation) / prices.Last();
+
+                double leftTriangleA = percDiffChange;
+                double leftTriangleB = oscilation;
+                double leftTriangleAlpha = Math.Atan2(leftTriangleA, leftTriangleB) * 180.0 / Math.PI;
+
+                double rightTriangleA = prices.Last();
+                double rightTriangleB = leftTriangleAlpha;
+                double rightTriangleAlpha = Math.Atan2(rightTriangleB, rightTriangleA) * 180.0 / Math.PI;
+
+                double magic = leftTriangleAlpha;
 
                 #region OutputFormatting
                 var asset = symbolInfo.Asset;
                 var currency = symbolInfo.Currency;
                 var percDiffChangeVal = percDiffChange.ToString().Replace(",", ".");
-                var oscilationVal = oscilation;
+                var oscilationVal = oscilation.ToString().Replace(",",".");
                 var magicVal = magic.ToString().Replace(",", ".");
                 var priceLast = prices.Last().ToString().Replace(",",".");
                 #endregion
@@ -90,6 +100,7 @@ namespace VolatilityAnalyzer
             var lastSgn = 0;
             var lastPrice = 0d;
             int changedDirectionCount = 0;
+            int avg = 0;
 
             foreach (var price in data)
             {
@@ -101,9 +112,10 @@ namespace VolatilityAnalyzer
                 }
                 lastSgn = currentSgn;
                 lastPrice = price;
+                avg++;
             }
-
-            return changedDirectionCount;
+            double oscRatio = Convert.ToDouble(changedDirectionCount) / Convert.ToDouble(avg);
+            return oscRatio;
         }
 
         private static double GetPercDiffChange(
@@ -113,6 +125,7 @@ namespace VolatilityAnalyzer
             var lastSgn = 0;
             var lastPrice = 0d;
             double percDiffChange = 0d;
+            int avg = 0;
 
             foreach (var price in data)
             {
@@ -126,9 +139,10 @@ namespace VolatilityAnalyzer
                 }
                 lastSgn = currentSgn;
                 lastPrice = price;
+                avg++;
             }
 
-            return percDiffChange;
+            return percDiffChange / avg;
         }
 
         private static double PercentageDifference(
